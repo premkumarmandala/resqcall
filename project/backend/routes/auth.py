@@ -113,6 +113,13 @@ def send_otp():
         mysql.connection.commit()
     
     cursor.close()
+    
+    from backend.utils import send_email_otp, send_sms_otp
+    if '@' in identifier:
+        send_email_otp(identifier, otp)
+    else:
+        send_sms_otp(identifier, otp)
+        
     return jsonify({'message': 'OTP Sent', 'debug_otp': otp})
 
 @auth_bp.route('/verify-otp', methods=['POST'])

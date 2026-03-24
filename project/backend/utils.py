@@ -1,6 +1,10 @@
 from functools import wraps
 from flask import request, jsonify, current_app
 import jwt
+import os
+import smtplib
+from email.mime.text import MIMEText
+from twilio.rest import Client
 from backend.db import mysql
 
 def token_required(f):
@@ -52,3 +56,46 @@ def send_sms_simulation(phone_number, message):
     print(f"Message: {message}")
     print(f"----------------------\\n")
     return True
+
+def send_email_otp(to_email, otp):
+    try:
+        sender_email = os.environ.get('SMTP_EMAIL')
+        sender_password = os.environ.get('SMTP_PASSWORD')
+        
+        if not sender_email or not sender_password:
+            print("SMTP credentials missing. Cannot send email.")
+            return False
+
+        msg = MIMEText(f"Your ResQ-call verification code is: {otp}")
+        msg['Subject'] = 'ResQ-call Verification Code'
+        msg['From'] = sender_email
+        msg['To'] = to_email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Failed to send email OTP: {e}")
+        return False
+
+def send_sms_otp(phone_number, otp):
+    try:
+        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_number = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if not all([account_sid, auth_token, twilio_number]):
+            print("Twilio credentials missing. Cannot send SMS.")
+            return False
+
+        client = Client(account_sid, auth_token)
+        message = client.messages.create(
+            body=f"Your ResQ-call verification code is: {otp}",
+            from_=twilio_number,
+            to=phone_number
+        )
+        return True
+    except Exception as e:
+        print(f"Failed to send SMS OTP: {e}")
+        return False
