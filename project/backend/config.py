@@ -3,9 +3,10 @@ import os
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'super-secret-key-for-dev'
     MYSQL_HOST = os.environ.get('MYSQL_HOST') or 'localhost'
+    MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
     MYSQL_USER = os.environ.get('MYSQL_USER') or 'root' # Update if needed
     MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD') or 'Jesus143' # Update if needed
-    MYSQL_DB = os.environ.get('MYSQL_DB') or 'resq_db'
+    MYSQL_DB = os.environ.get('MYSQL_DB') or 'defaultdb'
     MYSQL_CURSORCLASS = 'DictCursor' 
     GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     
