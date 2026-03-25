@@ -63,7 +63,9 @@ async function apiCall(endpoint, method = 'GET', data = null) {
 
         // If the backend returns a message but it's an error status
         if (!res.ok) {
-            return { error: true, message: (json && json.message) ? json.message : 'Request failed' };
+            let errorMsg = (json && json.message) ? json.message : 'Request failed';
+            if (json && json.error) errorMsg += ' - ' + json.error;
+            return { error: true, message: errorMsg };
         }
         return json;
     } catch (err) {
