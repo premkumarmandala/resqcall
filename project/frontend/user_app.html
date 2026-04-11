@@ -755,24 +755,35 @@
                     </div>
                 `;
 
-                if (hospital) {
-                    html += `
-                        <div class="hospital-info">
-                            <h4>🏥 Nearest Hospital Match</h4>
-                            <p><strong>${hospital.name}</strong> (${dist} km away)</p>
-                            <p>${hospital.address}</p>
-                            <p>Phone: ${hospital.phone}</p>
-                            <small style="color: green;">✓ SMS Sent with details</small>
-                            <div style="margin-top: 10px;">
-                                <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${hospital.latitude},${hospital.longitude}&travelmode=driving" 
-                                   target="_blank" 
-                                   class="btn btn-primary" 
-                                   style="display: inline-block; text-decoration: none; text-align: center; padding: 10px; font-size: 0.9rem;">
-                                   📍 Get Directions
-                                </a>
+                if (data.nearby_hospitals && data.nearby_hospitals.length > 0) {
+                    html += `<h4>🏥 Nearby Appropriate Hospitals</h4>`;
+                    data.nearby_hospitals.forEach((hosp, index) => {
+                        html += `
+                            <div class="hospital-info" style="${index > 0 ? 'opacity: 0.9; margin-top: 15px;' : ''}">
+                                <p><strong>${index + 1}. ${hosp.name}</strong> (${hosp.distance_km} km away)</p>
+                                <p style="font-size: 0.85em; color: #555;">${hosp.address}</p>
+                                <p style="font-size: 0.85em;">Phone: ${hosp.phone}</p>
+                                <div style="margin-top: 5px;">
+                                    <a href="https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${hosp.latitude},${hosp.longitude}&travelmode=driving" 
+                                       target="_blank" 
+                                       class="btn btn-primary" 
+                                       style="display: inline-block; text-decoration: none; text-align: center; padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+                                       📍 Get Directions
+                                    </a>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    });
+
+                    if (data.nearest_ambulance) {
+                        html += `
+                            <div style="margin-top: 1rem; background: #e0f7fa; padding: 10px; border-radius: 10px; border-left: 4px solid #00acc1;">
+                                <strong>🚑 Nearest Available Ambulance</strong>
+                                <p>Vehicle: ${data.nearest_ambulance.vehicle_number} (${data.ambulance_distance_km} km away)</p>
+                                <p>Driver Phone: ${data.nearest_ambulance.driver_phone || 'N/A'} </p>
+                            </div>
+                        `;
+                    }
 
                     if (analysis.ambulance_needed) {
                         html += `

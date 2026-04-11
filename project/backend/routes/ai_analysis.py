@@ -52,9 +52,9 @@ def get_ai_analysis(symptoms):
     - urgency: "Low", "Medium", "High", or "Critical"
     - speciality: The medical speciality required (e.g., "Cardiology", "Neurology", "General", "Trauma")
     - ambulance_needed: boolean (true if condition seems life-threatening or mobility is compromised)
-    - advice: Short, immediate advice for the patient (max 20 words).
+    - advice: Detailed step-by-step first-aid and immediate advice for the patient (around 3-4 sentences). Give clear instructions on what to do while waiting for help.
     
-    Do not include markdown code blocks, just rotation the raw JSON string.
+    Do not include markdown code blocks, just return the raw JSON string.
     """
     
     try:
@@ -65,10 +65,10 @@ def get_ai_analysis(symptoms):
     except Exception as e:
         print(f"AI Error: {e}")
         return {
-            "urgency": "High", # Fail safe to High
+            "urgency": "High",
             "speciality": "General",
-            "ambulance_needed": True, # Fail safe
-            "advice": f"Error analyzing: {str(e)}. Seek immediate help."
+            "ambulance_needed": True,
+            "advice": "System is currently busy due to high traffic. High urgency assumed. Please proceed to the nearest hospital immediately and seek emergency medical help."
         }
 
 @ai_analysis_bp.route('/analyze', methods=['POST'])
@@ -96,34 +96,38 @@ def analyze_symptoms(current_user):
     
     required_speciality = analysis.get('speciality', 'General')
     
+    capable_hospitals = []
+    
     for hosp in hospitals:
         # Check capabilities based on speciality
         capable = True
         if analysis.get('urgency') == 'Critical':
-            if not hosp.get('has_emergency'): capable = False
+            if hosp.get('has_emergency') is False or hosp.get('has_emergency') == 0: capable = False
         
-        if required_speciality == 'Cardiology' and not hosp.get('has_cardiac'): capable = False
-        if required_speciality == 'Trauma' and not hosp.get('has_trauma'): capable = False
+        if required_speciality == 'Cardiology' and (hosp.get('has_cardiac') is False or hosp.get('has_cardiac') == 0): capable = False
+        if required_speciality == 'Trauma' and (hosp.get('has_trauma') is False or hosp.get('has_trauma') == 0): capable = False
         
         # If no specific capability match, fall back to just finding nearest emergency one if critical
         if not capable and analysis.get('urgency') == 'Critical':
-             # Keep searching but maybe lower priority? For now simple boolean filter.
              pass
 
         if capable:
             dist = calculate_distance(user_lat, user_lng, hosp['latitude'], hosp['longitude'])
-            if dist < min_dist:
-                min_dist = dist
-                nearest_hospital = hosp
+            capable_hospitals.append({'hospital': hosp, 'dist': dist})
     
     # If no specialized hospital found, just get the absolute nearest with Emergency
-    if not nearest_hospital and hospitals:
+    if not capable_hospitals and hospitals:
          for hosp in hospitals:
-             if hosp.get('has_emergency'):
+             if hosp.get('has_emergency', True):
                 dist = calculate_distance(user_lat, user_lng, hosp['latitude'], hosp['longitude'])
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest_hospital = hosp
+                capable_hospitals.append({'hospital': hosp, 'dist': dist})
+
+    capable_hospitals.sort(key=lambda x: x['dist'])
+    top_hospitals = capable_hospitals[:3]
+    
+    if top_hospitals:
+        nearest_hospital = top_hospitals[0]['hospital']
+        min_dist = top_hospitals[0]['dist']
 
     # 2.5 Find Nearest Available Ambulance
     cursor = mysql.connection.cursor() # Re-open cursor
@@ -143,21 +147,27 @@ def analyze_symptoms(current_user):
     
     response_data = {
         'analysis': analysis,
+        'nearby_hospitals': [],
         'nearest_hospital': None,
         'distance_km': None,
         'nearest_ambulance': None,
         'ambulance_distance_km': None
     }
     
+    for item in top_hospitals:
+        hosp = item['hospital']
+        response_data['nearby_hospitals'].append({
+            'id': hosp['id'],
+            'name': hosp['name'],
+            'address': hosp['address'],
+            'phone': hosp['contact_phone'],
+            'latitude': hosp['latitude'],
+            'longitude': hosp['longitude'],
+            'distance_km': round(item['dist'], 2)
+        })
+
     if nearest_hospital:
-        response_data['nearest_hospital'] = {
-            'id': nearest_hospital['id'],
-            'name': nearest_hospital['name'],
-            'address': nearest_hospital['address'],
-            'phone': nearest_hospital['contact_phone'],
-            'latitude': nearest_hospital['latitude'],
-            'longitude': nearest_hospital['longitude']
-        }
+        response_data['nearest_hospital'] = response_data['nearby_hospitals'][0]
         response_data['distance_km'] = round(min_dist, 2)
         
         # 3. Send SMS (Simulation)
