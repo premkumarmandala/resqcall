@@ -14,7 +14,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     on the earth (specified in decimal degrees)
     """
     if not lat1 or not lon1 or not lat2 or not lon2:
-        return float('inf')
+        return 999999
         
     # Convert decimal degrees to radians 
     lon1, lat1, lon2, lat2 = map(math.radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
@@ -136,7 +136,7 @@ def analyze_symptoms(current_user):
     cursor.close()
     
     nearest_ambulance = None
-    min_amb_dist = float('inf')
+    min_amb_dist = 999999
     
     for amb in ambulances:
         if amb.get('current_lat') and amb.get('current_lng'):
